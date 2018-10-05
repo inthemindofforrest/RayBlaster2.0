@@ -1,11 +1,13 @@
 #include "Functions.h"
 
+
 //Player
 
-void PLAYER::PlayerController(float deltaTime)
+void PLAYER::PlayerController(float deltaTime, BULLET * EnemyBullet, int SizeOfBullet)
 {
 	MovePlayer(deltaTime);
 	DrawPlayer();
+	CollisionWithBullet(EnemyBullet, SizeOfBullet);
 }
 void PLAYER::MovePlayer(float deltaTime)
 {
@@ -73,9 +75,10 @@ void PLAYER::DrawPlayer()
 {
 	Animation({ Rect.x, Rect.y }, &Frame, TotalFrames, Texture, &AnimationTimer, SpritePerFrame, WHITE);
 	DrawText(to_string(Coins).c_str(), ((float)GetScreenWidth() / 7) * 6, ((float)GetScreenHeight() / 20), 20, BLUE);
+	Animation({ ((float)GetScreenWidth() / 7) * 6 - 30, ((float)GetScreenHeight() / 20) }, &MoneyFrame, MoneyTotalFrames, MoneyTexture, &MoneyAnimationTimer, MoneySpritePerFrame, WHITE);
 	for (int i = 0; i < Health; i++)
 	{
-		DrawRectangle((i * 20) + 20, (GetScreenHeight() / 20) * 19, 10, 10, RED);
+		DrawRectangle((i * 20) + 20, (GetScreenHeight() / 20) * 1, 10, 10, RED);
 	}
 
 }
@@ -88,11 +91,17 @@ void PLAYER::InitilizePlayer()
 	Settings.ControllerType = Settings.MouseControls;
 
 	Texture = LoadTexture("Rocket.png");
+	MoneyTexture = LoadTexture("Currency.png");
 	Rect = { 100,100,(float)Texture.width / 3,(float)Texture.height };
 	AnimationTimer = 0;
 	SpritePerFrame = .1f;
 	Frame = 1;
 	TotalFrames = 3;
+
+	MoneyAnimationTimer = 0;
+	MoneySpritePerFrame = .2f;
+	MoneyFrame = 1;
+	MoneyTotalFrames = 3;
 	Coins = 0;
 }
 void PLAYER::SwapControls()
@@ -122,6 +131,20 @@ void PLAYER::TakeCoins(int Withdrawl)
 {
 	Coins -= Withdrawl;
 }
+void PLAYER::CollisionWithBullet(BULLET * EnemyBullet, int SizeOfBullets)
+{
+	for (int i = 0; i < SizeOfBullets; i++)
+		if (EnemyBullet[i].IsActive)
+			if (CheckCollisionRecs(Rect, EnemyBullet[i].Rect) && EnemyBullet[i].Target == 0)
+			{
+				Health--;
+				EnemyBullet[i].IsActive = false;
+			}
+}
+int PLAYER::GetHealth()
+{
+	return Health;
+}
 
 Vector2 PLAYER::GetPosition()
 {
@@ -135,12 +158,13 @@ Vector2 PLAYER::GetTexture()
 
 //Enemy
 
-void ENEMY::EnemyController(float deltaTime, BULLET * PlayerBullets, int SizeOfBullets, CURRENCY * Currency, int Size)
+void ENEMY::EnemyController(float deltaTime, BULLET * PlayerBullets, int SizeOfBullets, 
+	CURRENCY * Currency, int Size, int * CurrentEnemies)
 {
 	DrawEnemy();
 	MoveEnemy(deltaTime);
 	CollisionWithBullet(PlayerBullets, SizeOfBullets);
-	CheckForDeath(Currency, Size);
+	CheckForDeath(Currency, Size, CurrentEnemies);
 }
 void ENEMY::DrawEnemy()
 {
@@ -165,7 +189,7 @@ void ENEMY::InitilizeEnemy(int Type)
 	Frame = 1;
 	TotalFrames = 3;
 	Direction = { 1,1 };
-	
+	ShootTimer = RandomNumber(2,4);
 }
 void ENEMY::MoveEnemy(float deltaTime)
 {
@@ -193,19 +217,19 @@ void ENEMY::CollisionWithBullet(BULLET * PlayerBullets, int SizeOfBullets)
 {
 	for(int i = 0; i < SizeOfBullets; i++)
 		if(PlayerBullets[i].IsActive)
-			if (CheckCollisionRecs(Rect, PlayerBullets[i].Rect))
+			if (CheckCollisionRecs(Rect, PlayerBullets[i].Rect) && PlayerBullets[i].Target == 1)
 			{
 				Health--;
 				PlayerBullets[i].IsActive = false;
 			}
 }
-void ENEMY::CheckForDeath(CURRENCY * Currency, int Size)
+void ENEMY::CheckForDeath(CURRENCY * Currency, int Size, int * CurrentEnemies)
 {
 	if (Health <= 0)
 	{
 		IsAlive = false;
 		SpawnCoin({ Rect.x, Rect.y }, Currency, Size);
-
+		(*CurrentEnemies)--;
 	}
 }
 Vector2 ENEMY::GetPosition()
@@ -220,32 +244,42 @@ Vector2 ENEMY::GetTexture()
 //Bullets
 void BULLET::BulletHandler(float deltaTime, PLAYER Player)
 {
-	DrawBullet();
+	DrawBullet(Player);
 	BulletMovement(deltaTime);
 }
 void BULLET::BulletMovement(float deltaTime)
 {
-	Rect.x += Speed * deltaTime;
+		Rect.x += Speed * deltaTime;
 }
-void BULLET::DrawBullet()
+void BULLET::DrawBullet(PLAYER Player)
 {
-	if(IsActive)
-		Animation({ Rect.x, Rect.y }, &Frame, TotalFrames, Texture, &AnimationTimer, SpritePerFrame, PURPLE);
+	if (IsActive)
+		if (Target == 0)
+			Animation({ Rect.x, Rect.y }, &Frame, TotalFrames, Texture, &AnimationTimer, SpritePerFrame, GREEN);
+		else if (Target == 1)
+			Animation({ Rect.x, Rect.y }, &Frame, TotalFrames, Texture, &AnimationTimer, SpritePerFrame, Player.Shootcolor);
 }
-void BULLET::InitilizeBullet(PLAYER Player, int target, ENEMY Enemies)
+void BULLET::InitilizeBullet(PLAYER Player, int target, ENEMY Enemies, int speed)
 {
 	Damage = 1;
 	Texture = LoadTexture("Bullet.png");
 	Frame = 1;
 	TotalFrames = 3;
-	AnimationTimer = 0; 
+	AnimationTimer = 0;
 	SpritePerFrame = .1f;
-	Speed = 250;
+	Speed = speed;
 	Target = target;
-	if(Target == _Player)
-		Rect = { Player.GetPosition().x, Player.GetPosition().y, (float)Texture.width, (float)Texture.height };
-	if (Target == _Enemy)
-		Rect = { Enemies.GetPosition().x, Enemies.GetPosition().y, (float)Texture.width, (float)Texture.height };
+	if (Target == 1)
+	{
+		Rect = { Player.GetPosition().x, Player.GetPosition().y, (float)Texture.width / 3, (float)Texture.height };
+	
+	}
+
+	if (Target == 0)
+	{
+		Rect = { Enemies.GetPosition().x, Enemies.GetPosition().y, (float)Texture.width / 3, (float)Texture.height };
+		Speed *= -1;
+	}
 
 	IsActive = false;
 }
@@ -281,6 +315,72 @@ void CURRENCY::DrawCoin()
 	Animation({ Rect.x, Rect.y }, &Frame, TotalFrames, Texture, &AnimationTimer, SpritePerFrame, WHITE);
 }
 
+//Stars
+void STAR::StarHandler(PLAYER * Player)
+{
+	MoveStar();
+	DrawStar(Player);
+}
+void STAR::DrawStar(PLAYER * Player)
+{
+	if (IsActive)
+	{
+		//Radius = (float)RandomNumber(11, 15) / 10;
+		if (!ShootingStar)
+			DrawCircle(Position.x, Position.y, Radius, YELLOW);
+		else if (ShootingStar)
+		{
+			DrawTexture(ShootingStarTexture, Position.x, Position.y, WHITE);
+			if(Wished)
+				DrawText("PRESS SPACE TO WISH", (GetScreenWidth() / 10) * 2, (GetScreenHeight() / 6) * 5, 48, WHITE);
+			if (IsKeyPressed(KEY_SPACE) && Wished)
+			{
+				if ((*Player).Health < (*Player).MaxHealth)
+				{
+					(*Player).Health += 1;
+					Wished = false;
+				}
+			}
+		}
+	}
+}
+void STAR::MoveStar()
+{
+	if(!ShootingStar)
+		Position.x -= GetFrameTime() * (Radius * 100);
+	else if (ShootingStar)
+	{
+		Position.x -= GetFrameTime() * (Radius * 100) * 2;
+		Position.y += GetFrameTime() * (Radius * 50);
+	}
+
+	if (Position.x < 0)
+	{
+		IsActive = false;
+	}
+}
+void STAR::InstantiateStar(STAR * Star, int SizeOfStars,int MinX, int MaxX)
+{
+	if (MaxX == 0)MaxX = 1;
+
+	Position = { /*((float)RandomNumber(MinX, MaxX)),
+	(float)RandomNumber(0, GetScreenHeight())*/(float)RandomNumber(800, 1250), (float)RandomNumber(0, 450) };
+	Radius = RandomNumber(1, 20) / 8;
+	ShootingStar = false;
+	IsActive = false;
+}
+void STAR::InstantiateShootingStar(STAR * Star, int SizeOfStars, int MinX, int MaxX)
+{
+	if (MaxX == 0)MaxX = 1;
+
+	Position = { ((float)RandomNumber(MinX, MaxX)),
+		0 };
+	Radius = 2;
+	ShootingStarTexture = LoadTexture("ShootingStar.png");
+	ShootingStar = true;
+	IsActive = false;
+	Wished = true;
+}
 
 void SpawnCoin(Vector2 Position, CURRENCY * Currency, int CurrencySize)
 {
@@ -294,6 +394,7 @@ void SpawnCoin(Vector2 Position, CURRENCY * Currency, int CurrencySize)
 		}
 	}
 }
+
 void PlayerBulletOrginizer(PLAYER Player, BULLET * bullet, int SizeOfBullets)
 {
 
@@ -303,9 +404,30 @@ void PlayerBulletOrginizer(PLAYER Player, BULLET * bullet, int SizeOfBullets)
 		{
 			if (!bullet[i].IsActive)
 			{
-				bullet[i].InitilizeBullet(Player, 0, {});
+				bullet[i].InitilizeBullet(Player, 1, {}, 250);
 				bullet[i].IsActive = true;
+				bullet[i].Target = 1;
 				break;
+			}
+		}
+	}
+}
+void EnemyBulletOrginizer(ENEMY * Enemies, int SizeOfEnemies, BULLET * bullet, int SizeOfBullets)
+{
+	for (int j = 0; j < SizeOfEnemies; j++)
+	{
+		if (Enemies[j].IsAlive && Enemies[j].ShootTimer > 2)
+		{
+			for (int i = 0; i < SizeOfBullets; i++)
+			{
+				if (!bullet[i].IsActive)
+				{
+					bullet[i].InitilizeBullet({}, 0, Enemies[j], RandomNumber(200, 300));
+					bullet[i].IsActive = true;
+					bullet[i].Target == 0;
+					Enemies[j].ShootTimer = 0;
+					break;
+				}
 			}
 		}
 	}
@@ -339,7 +461,34 @@ void CollectCoin(PLAYER * Player, CURRENCY * Currency, int SizeOfCurrency)
 			}
 	}
 }
-
+void BulletDeletion(BULLET * Bullets, int SizeOfBullet)
+{
+	for (int i = 0; i < SizeOfBullet; i++)
+	{
+		if (Bullets[i].Rect.x < 0 || Bullets[i].Rect.x > GetScreenWidth())
+		{
+			Bullets[i].IsActive = false;
+		}
+	}
+}
+void CheckForPlayerDeath(PLAYER * Player, ENEMY * Enemies, int SizeOfEnemies,
+	BULLET * Bullets, int SizeOfBullets, int * CurrentEnemies)
+{
+	if ((*Player).GetHealth() <= 0)
+	{
+		for (int i = 0; i < SizeOfBullets; i++)
+		{
+			Bullets[i].IsActive = false;
+		}
+		for (int i = 0; i < SizeOfEnemies; i++)
+		{
+			Enemies[i].IsAlive = false;
+		}
+		(*Player).InitilizePlayer();
+		(*CurrentEnemies) = 0;
+	}
+	
+}
 
 int RandomNumber(int Min, int Max)
 {

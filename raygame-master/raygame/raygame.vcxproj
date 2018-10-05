@@ -133,15 +133,19 @@
   <ItemGroup>
     <ClCompile Include="functions.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MainMenu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Functions.h" />
+    <ClInclude Include="MainMenu.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Alien.png" />
     <Image Include="Bullet.png" />
+    <Image Include="Button.png" />
     <Image Include="Currency.png" />
     <Image Include="Rocket.png" />
+    <Image Include="ShootingStar.png" />
     <Image Include="StrongestAlien.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

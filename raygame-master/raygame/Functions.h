@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include <string>
+#include <time.h>
 
 using namespace std;
 
@@ -56,15 +57,15 @@ public:
 	bool IsActive;
 	void BulletHandler(float deltaTime, PLAYER Player);
 	void BulletMovement(float deltaTime);
-	void InitilizeBullet(PLAYER Player, int target, ENEMY Enemies);
-	void DrawBullet();
+	void InitilizeBullet(PLAYER Player, int target, ENEMY Enemies, int speed);
+	void DrawBullet(PLAYER Player);
 	
 };
 class PLAYER
 {
 private:
-	int Health; 
-	int MaxHealth;
+	
+	
 	int MovementSpeed;
 	int Coins;
 	Rectangle Rect;
@@ -75,11 +76,20 @@ private:
 	int TotalFrames;
 
 	Texture2D Texture;
+
+	float MoneyAnimationTimer;
+	float MoneySpritePerFrame;
+	int MoneyFrame;
+	int MoneyTotalFrames;
+	Texture2D MoneyTexture;
 	
 public:
+	Color Shootcolor = PURPLE;
+	int Health;
+	int MaxHealth;
 	SETTINGS Settings;
 	CONTROLS Controls;
-	void PlayerController(float deltaTime);
+	void PlayerController(float deltaTime, BULLET * EnemyBullet, int SizeOfBullet);
 	void MovePlayer(float deltaTime);
 	void DrawPlayer();
 	void InitilizePlayer();
@@ -87,6 +97,8 @@ public:
 	void AddCoins(int Deposit);
 	int GetCoins();
 	void TakeCoins(int Withdrawl);
+	void CollisionWithBullet(BULLET * PlayerBullets, int SizeOfBullets);
+	int GetHealth();
 	Vector2 GetPosition();
 	Vector2 GetTexture();
 };
@@ -109,14 +121,15 @@ private:
 	Texture2D Texture;
 
 public:
+	float ShootTimer;
 	bool IsAlive;
 	enum {Basic_Enemy, Complex_Enemy, Boss_Enemy};
 	void InitilizeEnemy(int Type);
 	void DrawEnemy();
-	void EnemyController(float deltaTime, BULLET * PlayerBullets, int SizeOfBullets, CURRENCY * Currency, int Size);
+	void EnemyController(float deltaTime, BULLET * PlayerBullets, int SizeOfBullets, CURRENCY * Currency, int Size, int * CurrentEnemies);
 	void MoveEnemy(float deltaTime);
 	void CollisionWithBullet(BULLET * PlayerBullets, int SizeOfBullets);
-	void CheckForDeath(CURRENCY * Currency, int Size);
+	void CheckForDeath(CURRENCY * Currency, int Size, int * CurrentEnemies);
 
 	Vector2 GetPosition();
 	Vector2 GetTexture();
@@ -143,7 +156,35 @@ public:
 	
 };
 
+class STAR
+{
+private:
+	Vector2 Position;
+	Texture2D ShootingStarTexture;
+	float Radius;
+	bool ShootingStar;
+	bool Wished;
+public:
+	bool IsActive;
+	void StarHandler(PLAYER * Player);
+	void DrawStar(PLAYER * Player);
+	void MoveStar();
+	void InstantiateStar(STAR * Star, int SizeOfStars, int MinX, int MaxX);
+	void InstantiateShootingStar(STAR * Star, int SizeOfStars, int MinX, int MaxX);
+};
+class MAINMENU
+{
+public:
+	Texture2D PlayTexture;
+	Texture2D OptionsTexture;
+	Texture2D QuitTexture;
+};
 
+int MainMenuHandler(bool * IsMainMenu, int * MenuScreen, MAINMENU Menu, PLAYER * Player);
+void CheckForPlayerDeath(PLAYER * Player, ENEMY * Enemies, int SizeOfEnemies,
+	BULLET * Bullets, int SizeOfBullets, int * CurrentEnemies);
+void BulletDeletion(BULLET * Bullets, int SizeOfBullet);
+void EnemyBulletOrginizer(ENEMY * Enemies, int SizeOfEnemies, BULLET * bullet, int SizeOfBullets);
 void CollectCoin(PLAYER * Player, CURRENCY * Currency, int SizeOfCurrency);
 void SpawnCoin(Vector2 Position, CURRENCY * Currency, int CurrencySize);
 void PlayerBulletOrginizer(PLAYER Player, BULLET * bullet, int SizeOfBullets);
